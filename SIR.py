@@ -43,7 +43,7 @@ root.rowconfigure(0, weight=1)
 Bb = StringVar()
 bs = ttk.Entry(mainframe, width=7, textvariable=Bb)
 bs.grid(column=2, row=1, sticky=(W, E))
-ttk.Label(mainframe, text="Average number of conctacts a day with susceptible people").grid(column=1, row=1, sticky=W)
+ttk.Label(mainframe, text="Average number of days an infected person makes infecting contact").grid(column=1, row=1, sticky=W)
 Kk = StringVar()
 ks = ttk.Entry(mainframe, width=7, textvariable=Kk)
 ks.grid(column=2, row=2, sticky=(W, E))
@@ -78,6 +78,9 @@ answer = solve_ivp(lambda t, Y: SIR(t, Y, *argsl), Days, Y0, t_eval=Time, method
 S = answer.y[0]*N
 I = answer.y[1]*N
 R = answer.y[2]*N
+Sp = answer.y[0]*100
+Ip = answer.y[1]*100
+Rp = answer.y[2]*100
 
 fig = plt.figure()
 plt.plot(Time, S, 'b--', label='Susceptible')
@@ -87,4 +90,16 @@ plt.xlabel(r'Time [Days]')
 plt.ylabel(r'Number of people')
 plt.legend(loc='best')
 plt.title('SIR Method')
+plt.grid()
+
+fig = plt.figure()
+plt.plot(Time, Sp, 'b--', label='Susceptible')
+plt.plot(Time, Ip, 'g--', label='Infected')
+plt.plot(Time, Rp, 'r--', label='Recovered')
+plt.xlabel(r'Time [Days]')
+plt.ylabel(r'Percentage of population')
+plt.legend(loc='best')
+plt.title('SIR Method')
+plt.axhline(y=float(100.0), color='k', linestyle='--')
+plt.gca().set_yticklabels(['{:d}%'.format(int(x)) for x in plt.gca().get_yticks()])
 plt.grid()
