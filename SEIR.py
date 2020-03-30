@@ -3,6 +3,7 @@
 Created on Thu Mar 26 22:55:37 2020
 
 @author: Travis Czechorski tjcze01@gmail.com
+https://www.ijidonline.com/article/S1201-9712(20)30117-X/fulltext
 """
 
 import matplotlib.pyplot as plt 
