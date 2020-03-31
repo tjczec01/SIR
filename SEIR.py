@@ -3,6 +3,14 @@
 Created on Thu Mar 26 22:55:37 2020
 
 @author: Travis Czechorski tjcze01@gmail.com
+
+Data and Model from:
+A conceptual model for the coronavirus disease 2019 (COVID-19)
+outbreak in Wuhan, China with individual reaction and
+governmental action
+
+DOI:https://doi.org/10.1016/j.ijid.2020.02.058
+
 https://www.ijidonline.com/article/S1201-9712(20)30117-X/fulltext
 """
 
@@ -25,9 +33,13 @@ try:
 except:
        pass
 
-def R0(α, β, μ, λ):
-       R_0 = (α/(μ + α))*(β/(μ + λ))
+def R0(α, β, μ, γ):
+       # R_0 = (α/(μ + α))*(β/(μ + λ))
+       R_0 = (β/γ)*(α/(α + μ))
        return R_0
+
+def R0b(β, γ, σ, μ):
+       return (β*σ)/((γ + μ)*(μ + σ))
 
 def aplha(day):
        if int(day) <= 23:
@@ -37,15 +49,15 @@ def aplha(day):
        else:
               return 0.8478
 
-def Beta(σ, b, D, N, k):
-       B = b*(1 - σ)*((1 - D/N)**k)
+def Beta(α,β0, D, N, k):
+       B = β0*(1 - α)*((1 - D/N)**k)
        return B
 
 def SEIR(t, y, *args):
        σ, β, γ, μ, Λ, F, α, d, κ, λ = args
        β_t = Beta(α, β, y[5], y[4], κ)
-       dsdt = Λ - μ*y[0] - ((β*F)/y[4])*y[2]*y[0] - (β_t/y[4])*y[2]*y[0] - μ*y[0]
-       dedt = ((β*F)/y[4])*y[2]*y[0] + (β_t/y[4])*y[2]*y[0] - (μ + σ)*y[1]
+       dsdt = Λ - μ*y[0] - ((β*F*y[0])/y[4]) - (β_t/y[4])*y[2]*y[0] 
+       dedt = ((β*F*y[0])/y[4]) + (β_t/y[4])*y[2]*y[0] - (μ + σ)*y[1]
        didt = σ*y[1] - (μ + γ)*y[2]
        drdt = γ*y[2] - μ*y[3]
        dndt = -μ*y[4]
@@ -56,19 +68,17 @@ def SEIR(t, y, *args):
 def jacobian(t, y, *args):
         σ, β, γ, μ, Λ, F, α, d, κ, λ = args
         β_t = Beta(α, β, y[5], y[4], κ)
-        return [[-F*y[2]*β/y[4] - y[2]*β_t/y[4] - 2*μ,      0, -F*y[0]*β/y[4] - y[0]*β_t/y[4],  0,  F*y[2]*y[0]*β/y[4]**2 + y[2]*y[0]*β_t/y[4]**2,  0, 0],
-                [       F*y[2]*β/y[4] + y[2]*β_t/y[4], -μ - σ,  F*y[0]*β/y[4] + y[0]*β_t/y[4],  0, -F*y[2]*y[0]*β/y[4]**2 - y[2]*y[0]*β_t/y[4]**2,  0, 0],
-                [                       0,      σ,             -γ - μ,  0,                            0,  0, 0],
-                [                       0,      0,                  γ, -μ,                            0,  0, 0],
-                [                       0,      0,                  0,  0,                           -μ,  0, 0],
-                [                       0,      0,                d*γ,  0,                            0, -λ, 0],
-                [                       0,      σ,                  0,  0,                            0,  0, 0]]       
+        return [[-F*β/y[4]- y[2]*β_t/y[4]- μ,      0, -y[0]*β_t/y[4],  0,  F*y[0]*β/y[4]**2 + y[2]*y[0]*β_t/y[4]**2,  0, 0],
+                [     F*β/y[4]+ y[2]*β_t/y[4], -μ - σ,  y[0]*β_t/y[4],  0, -F*y[0]*β/y[4]**2 - y[2]*y[0]*β_t/y[4]**2,  0, 0],
+                [                   0,      σ,   -γ - μ,  0,                          0,  0, 0],
+                [                   0,      0,        γ, -μ,                          0,  0, 0],
+                [                   0,      0,        0,  0,                         -μ,  0, 0],
+                [                   0,      0,      d*γ,  0,                          0, -λ, 0],
+                [                   0,      σ,        0,  0,                          0,  0, 0]]       
 
 def roundup(x, places):
     return int(math.ceil(x / int(places))) * int(places)
 
-b_0 = 0.45/100.0 # Chance of getting infected per contact
-r = 10.0 # Contacts per day
 Λ = 0.0 # Birth rate
 μ = 0.0 # Death rate
 # Λ = 0.01 # Birth rate
@@ -77,24 +87,28 @@ Tc = 2.0 # Typical time between contacts
 # β = 0.5944 #1.0/Tc 
 β = 1.68
 # Tr = 11.1 # Typical time until recovery
+Tinfs = [2.9, 2.3, 2.3, 2.9, 10.0, 1.5]
+# Tr = sum(Tinfs)/len(Tinfs) #5.0
+# Tr = 11.1
 Tr = 14.0
 γ = 1.0/Tr
-iis = [5.2, 5.2, 6.1, 5.5, 4.8, 5.0, 6.5, 4.8]
-Ti = sum(iis)/len(iis)
-σ = Ti**-1
-rb = (Tr/Tc)*b_0
-F = 0
-α = 0.0 #
+Tincs = [5.2, 5.2, 6.1, 5.5, 4.8, 5.0, 6.5, 4.8]
+Tinc = sum(Tincs)/len(Tincs)
+σ = Tinc**-1
+# σ = 3.0**-1
+F = 10
+α = 0.0 
+# α = 0.05
 # α = 0.4239
 # α = 0.8478
-d = 0.2
+d = 0.05
 # k = 1117.3
-# k = 100
+# k = 200
 k = 0
 λb = 11.2
 λ = λb**-1
 Infi = 10 # Initial infected
-Daysnn = 100
+Daysnn = 150
 NP = 329436928 # 1437904257
 S0 = NP - Infi
 its = 10000
@@ -103,19 +117,20 @@ Days = [0.0, Daysnn]
 Time = [i for i in range(0, int(Daysnn + 1), 1)]
 tt = list(range(0,its,1))
 Time_f = [i*itern for i in tt]
-Y0 = [NP, 0.0, Infi, 0.0, NP, 0.0, Infi]
-Ro = R0(σ, β, μ, γ)
+Y0 = [NP, 0.0, Infi, 0.0, NP, d, Infi]
+Ro = R0b(β, γ, σ,  μ)
 # print(Ro)
 # print('Λ') 
 # print('μ') 
 # print(α)
 # print(β)
-# print(RB)
+# print(Ro, 1.68**-1)
 # print(λ)
+# print(σ)
 
 answer = solve_ivp(SEIR, Days, Y0, t_eval=Time_f, method = 'Radau', args=(σ, β, γ, μ, Λ, F, α, d, k, λ), jac=jacobian, rtol=1E-10, atol=1E-10)
-ts = answer.t
 
+ts = answer.t
 Bs = [Beta(σ, β, i, j, k) for i,j in zip(answer.y[5],answer.y[4])]
 
 Sn = answer.y[0]
